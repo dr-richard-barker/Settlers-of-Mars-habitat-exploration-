@@ -1,0 +1,5 @@
+{
+  "name": "Settlers of Mars: An AI Adventure",
+  "description": "A dynamic text-based adventure game set on Mars, powered by Gemini and Imagen. Explore the red planet, make critical decisions, and survive in a story that unfolds with every choice you make.",
+  "requestFramePermissions": []
+}
