@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { Scene, ScenePayload } from '../types';
 
@@ -21,7 +20,7 @@ const responseSchema = {
         },
         choices: {
             type: Type.ARRAY,
-            description: "A list of 2 to 4 distinct and interesting actions the player can take next. Some choices should relate to building, repairing, or exploring the habitat.",
+            description: "A list of 2 to 4 distinct actions. A core part of the game is construction. You MUST frequently provide choices for building, repairing, or expanding the habitat. Examples: 'Build Biodome', 'Connect Tunnel to the rock formation', 'Set up solar panels'.",
             items: {
                 type: Type.STRING,
             },
@@ -36,25 +35,42 @@ const responseSchema = {
         },
         habitatStatus: {
             type: Type.STRING,
-            description: "A concise, 1-2 sentence description of the player's habitat's current state. The initial state is 'A single, cylindrical colonization shuttle, partially buried in the red sand after a crash landing.' If the player's choice affects the habitat, describe the change. Otherwise, repeat the current status."
+            description: "A concise, 1-2 sentence description of the player's habitat's current state, based on the `habitatModules` array. E.g., 'A cylindrical shuttle with a new biodome attached.'"
         },
+        habitatModules: {
+            type: Type.ARRAY,
+            description: "An array of objects representing all modules of the habitat. This list MUST be persistent. On each turn, return the full, updated list of all modules built so far. The first module should always be the shuttle.",
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    id: { type: Type.STRING, description: "A unique and persistent identifier for this module, e.g., 'shuttle-1', 'biodome-1'. Never change the ID of an existing module." },
+                    type: { type: Type.STRING, description: "The type of module. Can be one of: 'shuttle', 'biodome', 'tunnel'." },
+                    connectedToId: { type: Type.STRING, description: "The 'id' of the module this one is connected to. The main shuttle has a null or empty value for this." }
+                },
+                required: ["id", "type"]
+            }
+        }
     },
-    required: ["story", "imagePrompt", "choices", "newItem", "gameOver", "habitatStatus"],
+    required: ["story", "imagePrompt", "choices", "newItem", "gameOver", "habitatStatus", "habitatModules"],
 };
 
-const systemInstruction = `You are a master storyteller and game master for a text-based adventure game called 'Settlers of Mars'. The player is one of the first human colonists on Mars. Your goal is to create a compelling, branching narrative focused on survival, exploration, and mystery. The story must be engaging and suspenseful.
+const systemInstruction = `You are a master storyteller and game master for a text-based adventure game called 'Settlers of Mars'. The player is one of the first human colonists on Mars. Your goal is to create a compelling, branching narrative focused on survival, exploration, and habitat construction.
 
 **Key Tasks:**
 1.  **Narrative:** Continue the story based on the player's choice.
-2.  **Choices:** Provide meaningful choices, some of which should relate to building, upgrading, or repairing the player's habitat.
-3.  **Inventory:** Describe how the player finds items.
-4.  **Habitat:** You MUST update the 'habitatStatus' field in every response. The initial state is 'A single, cylindrical colonization shuttle, partially buried in the red sand after a crash landing.'. If the player's choice affects the habitat, describe the change. Otherwise, repeat the current status.
+2.  **Choices:** Provide meaningful choices. A core part of the game is construction. You MUST frequently include choices that allow the player to build, upgrade, or repair their habitat. Examples include 'Build Biodome', 'Connect Tunnel'.
+3.  **Habitat Modules:** You MUST manage the player's habitat structure using the 'habitatModules' array.
+    - The initial state is an array with one object: \`[{ id: 'shuttle-1', type: 'shuttle' }]\`.
+    - When the player chooses to build a new module (e.g., 'biodome' or 'tunnel'), add a NEW object to the 'habitatModules' array.
+    - The new module must have a unique 'id' and be connected to an existing module via 'connectedToId'. For example: \`{ id: 'biodome-1', type: 'biodome', connectedToId: 'shuttle-1' }\`.
+    - On every turn, you MUST return the COMPLETE and UNMODIFIED list of all previously existing modules, plus any new ones. DO NOT remove or change the IDs of old modules.
+4.  **Habitat Status:** Based on the final 'habitatModules' array, write a short, descriptive sentence for the 'habitatStatus' field.
 5.  **JSON Schema:** You must always respond in the provided JSON schema.`;
 
 const generateStory = async (history: string, choice: string): Promise<ScenePayload> => {
     let content;
     if (!history) {
-        content = "Start the game. The player's colonization shuttle has just crash-landed. They are the sole survivor amidst the wreckage on the red, dusty plains of Mars. What is their first move?";
+        content = "Start the game. The player's colonization shuttle has just crash-landed. They are the sole survivor amidst the wreckage on the red, dusty plains of Mars. What is their first move? The initial habitat is just the crashed shuttle.";
     } else {
         content = `Here is the story so far:\n${history}\n\nThe player chose to: "${choice}".\n\nContinue the story. What happens next?`;
     }
@@ -102,14 +118,10 @@ const generateImage = async (prompt: string, aspectRatio: '16:9' | '1:1' = '16:9
 export const fetchNextScene = async (history: string, choice: string): Promise<Scene> => {
     const scenePayload = await generateStory(history, choice);
 
-    const [imageUrl, habitatImageUrl] = await Promise.all([
-        generateImage(scenePayload.imagePrompt, '16:9'),
-        generateImage(`A 3D render from a video game like The Sims or Unreal Engine, showing a martian habitat on the surface of Mars, cinematic lighting, detailed. The habitat is described as: ${scenePayload.habitatStatus}`, '1:1')
-    ]);
+    const imageUrl = await generateImage(scenePayload.imagePrompt, '16:9');
 
     return {
         ...scenePayload,
         imageUrl,
-        habitatImageUrl,
     };
 };

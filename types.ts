@@ -7,6 +7,12 @@ export enum GameState {
   ERROR = 'ERROR',
 }
 
+export interface HabitatModule {
+  id: string;
+  type: 'shuttle' | 'biodome' | 'tunnel';
+  connectedToId?: string | null;
+}
+
 export interface ScenePayload {
   story: string;
   imagePrompt: string;
@@ -14,11 +20,11 @@ export interface ScenePayload {
   newItem: string | null;
   gameOver: boolean;
   habitatStatus: string;
+  habitatModules: HabitatModule[];
 }
 
 export interface Scene extends ScenePayload {
   imageUrl: string;
-  habitatImageUrl: string;
 }
 
 export interface StoryLogEntry {

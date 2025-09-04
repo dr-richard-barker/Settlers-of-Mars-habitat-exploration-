@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Scene, StoryLogEntry } from '../types';
 import ItemIcon from './icons/ItemIcon';
 import LoadingSpinner from './LoadingSpinner';
-import DownloadIcon from './icons/DownloadIcon';
+import HabitatViewer from './HabitatViewer';
 
 interface GameUIProps {
   scene: Scene | null;
@@ -15,16 +14,6 @@ interface GameUIProps {
 }
 
 const GameUI: React.FC<GameUIProps> = ({ scene, storyLog, inventory, onChoice, isLoading, lastAddedItem }) => {
-
-  const handleDownload = () => {
-    if (!scene?.habitatImageUrl) return;
-    const link = document.createElement('a');
-    link.href = scene.habitatImageUrl;
-    link.download = `martian-habitat-${Date.now()}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return (
     <div className="p-4 md:p-6 lg:p-8 min-h-screen flex flex-col lg:flex-row gap-6">
@@ -50,23 +39,8 @@ const GameUI: React.FC<GameUIProps> = ({ scene, storyLog, inventory, onChoice, i
         {/* Habitat Status */}
         <div className="bg-gray-800/50 border border-orange-500/30 rounded-lg p-4 backdrop-blur-sm">
             <h2 className="font-orbitron text-xl text-orange-400 mb-4 border-b border-orange-500/30 pb-2">HABITAT STATUS</h2>
-            <div className="aspect-square bg-black/30 rounded-md mb-3 flex items-center justify-center">
-                 {(scene?.habitatImageUrl && !isLoading) || (scene?.habitatImageUrl && isLoading) ? (
-                    <img src={scene.habitatImageUrl} alt="Habitat Status" className="w-full h-full object-cover rounded-md animate-fade-in" />
-                 ) : isLoading ? (
-                    <div className="w-8 h-8 border-2 border-dashed rounded-full animate-spin border-orange-500/50"></div>
-                 ) : (
-                    <p className="text-gray-600 text-xs text-center">Awaiting habitat data...</p>
-                 )}
-            </div>
-            <p className="text-sm text-gray-400 h-10 mb-3">{scene?.habitatStatus || ' '}</p>
-            <button
-                onClick={handleDownload}
-                disabled={!scene?.habitatImageUrl}
-                className="w-full flex items-center justify-center gap-2 bg-gray-700/50 hover:bg-gray-600/70 border border-gray-500/50 text-gray-200 font-semibold p-2 rounded-md transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
-                <DownloadIcon className="w-4 h-4" />
-                Download Image
-            </button>
+            <HabitatViewer modules={scene?.habitatModules ?? null} isLoading={isLoading} />
+            <p className="text-sm text-gray-400 h-10 mt-3">{scene?.habitatStatus || ' '}</p>
         </div>
 
 
